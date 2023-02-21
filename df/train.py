@@ -222,7 +222,7 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, drop_last=True)
 
 
 
-# initialize the model and optimizer
+# initializing the model and optimizer
 model = Net().to(device)
 model.weight_init()
 optimizer = optim.Adam(model.parameters(),lr = lr)

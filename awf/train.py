@@ -24,6 +24,9 @@ num_epochs = 20
 lr = 0.001
 num_classes = 900
 batch_size = 256
+test_split = 0.15
+val_split = 0.15
+data_path = 
 
 
 # function to load the data
@@ -139,3 +142,60 @@ def test(model, device, loader):
     #        format(correct, len(loader.dataset), correct / len(loader.dataset)))
     
     return correct / len(loader.dataset)
+
+
+# Loading the data
+data, target = load_data()
+
+# Splitting data into train, validation, and test
+num_instances = data.shape[0]
+num_cells = data.shape[2]
+num_traces = int(num_instances / num_classes)
+
+num = num_instances
+indices = np.arange(num_instances)
+np.random.shuffle(indices)
+
+split = int(num_instances * (1 - test_split))
+ind_test = np.array(indices[split:])
+
+num = indices.shape[0] - ind_test.shape[0]
+split = int(num * (1 - val_split))
+ind_val = np.array(indices[split:num])
+ind_train = np.array(indices[:split])
+
+x_train, y_train = data[ind_train], target[ind_train]
+x_valid, y_valid = data[ind_valid], target[ind_valid]
+x_test, y_test = data[ind_test], target[ind_test]
+
+
+# Wrapping data using data loaders
+train_dataset = Data(x_train, y_train)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+
+valid_dataset = Data(x_valid, y_valid)
+valid_loader = DataLoader(valid_dataset, batch_size=batch_size, drop_last=True)
+
+test_dataset = Data(x_test, y_test)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, drop_last=True)
+
+
+
+# initializing the model and optimizer
+model = Net().to(device)
+optimizer = optim.RMSprop(model.parameters(), lr = lr)
+
+
+
+print ('-------- start training ...')
+for epoch in range(num_epochs):
+    print (f'----------------- Epoch {epoch} ------------------')
+    train(model, device, train_loader, optimizer)
+    acc = test(model, device, valid_loader)
+    print (f'Validation accuracy: {acc*100:.2f}')
+    
+    
+print ("====================================================================")
+
+test_acc = test(model, device, test_loader)
+print (f'Test accuracy: {acc*100:.2f}')
