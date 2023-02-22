@@ -228,7 +228,7 @@ model.weight_init()
 optimizer = optim.Adam(model.parameters(),lr = lr)
 
 
-
+# Training
 print ('-------- start training ...')
 for epoch in range(num_epochs):
     print (f'----------------- Epoch {epoch} ------------------')

@@ -20,13 +20,13 @@ kwargs = {'num_workers': 0, 'pin_memory': True} if use_cuda else {}
 print ("Available cuda device:", device)
 
 # parameters
-num_epochs = 20
+num_epochs = 2
 lr = 0.001
-num_classes = 900
+num_classes = 100
 batch_size = 256
 test_split = 0.15
 val_split = 0.15
-data_path = 
+data_path = '/work/abahramali_umass_edu/wf_datasets/awf/tor_100w_2500tr.npz'
 
 
 # function to load the data
@@ -49,7 +49,7 @@ def load_data():
 
         return new_labels
     
-    npzfile = np.load(datapath)
+    npzfile = np.load(data_path, allow_pickle=True)
     data = npzfile["data"]
     labels = npzfile["labels"]
     npzfile.close()
@@ -88,7 +88,7 @@ class Net(nn.Module):
         self.maxpool2 = nn.MaxPool1d(kernel_size=4)
         
         self.lstm = nn.LSTM(311, 128)
-        self.fc1 = nn.Linear(4096, nb_classes)
+        self.fc1 = nn.Linear(4096, num_classes)
         
 
     def forward(self, inp):
@@ -108,9 +108,7 @@ class Net(nn.Module):
         x = x.view(batch_size,-1)
         
         x = self.fc1(x)
-        
-        x = F.softmax(x)
-        
+                
         return x
     
     
@@ -121,12 +119,15 @@ class Net(nn.Module):
 def train(model, device, train_loader, optimizer):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
+        data = data.float().to(device)
+        target = target.to(device)
+        
         optimizer.zero_grad()
         output = model(data)
         loss = F.cross_entropy(output, target)
         loss.backward()
         optimizer.step()
-        if batch_idx%1000 == 0:
+        if batch_idx%100 == 0:
             print ("Loss: {:0.6f}".format(loss.item()))
     
 def test(model, device, loader):
@@ -134,10 +135,14 @@ def test(model, device, loader):
     correct = 0
     with torch.no_grad():
         for data, target in loader:
+            data = data.float().to(device)
+            target = target.to(device)
+            
             output = model(data)
+            output = torch.softmax(output, dim=1)
             pred = output.argmax(dim=1, keepdim=True)
-            t = target.argmax(dim=1, keepdim=True)
-            correct += pred.eq(t.view_as(pred)).sum().item()
+            # t = target.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
     # print ('Accuracy Reports:\n Number of correct predictions: {}, length of dataset: {} accuracy: {:.2f}\n'. \
     #        format(correct, len(loader.dataset), correct / len(loader.dataset)))
     
@@ -165,8 +170,13 @@ ind_val = np.array(indices[split:num])
 ind_train = np.array(indices[:split])
 
 x_train, y_train = data[ind_train], target[ind_train]
-x_valid, y_valid = data[ind_valid], target[ind_valid]
+x_valid, y_valid = data[ind_val], target[ind_val]
 x_test, y_test = data[ind_test], target[ind_test]
+
+print ("Data dimensions:")
+print (f'Train data: {x_train.shape}, {y_train.shape}')
+print (f'Validation data: {x_valid.shape}, {y_valid.shape}')
+print (f'Test data: {x_test.shape}, {y_test.shape}')
 
 
 # Wrapping data using data loaders
